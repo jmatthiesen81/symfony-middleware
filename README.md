@@ -88,7 +88,9 @@ symiddleware:
       if: '%env(RUN_DEBUG_MIDDLEWARE)%'
       middlewares:
         - 'App\Middleware\TrackRequestTime'
-        - 'App\Middleware\EnableSqlLogger'
+        -
+          id: App\Middleware\EnableSqlLogger
+          append: true
 ```
 
 Now define this middleware on controller class or method:

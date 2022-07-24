@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
 
 return static function (ContainerConfigurator $configurator): void {
@@ -80,6 +81,7 @@ return static function (ContainerConfigurator $configurator): void {
             service(Kafkiansky\SymfonyMiddleware\Psr\PsrRequestTransformer::class),
             service(Kafkiansky\SymfonyMiddleware\Psr\PsrResponseTransformer::class),
             service(Kafkiansky\SymfonyMiddleware\Psr\PsrRequestCloner::class),
+            service(EventDispatcherInterface::class),
         ]);
 
     $services->set(Kafkiansky\SymfonyMiddleware\Integration\ControllerListener::class)

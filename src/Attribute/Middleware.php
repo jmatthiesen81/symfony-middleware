@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Kafkiansky\SymfonyMiddleware\Attribute;
 
+use Kafkiansky\SymfonyMiddleware\DependencyInjection\Configuration;
 use Psr\Http\Server\MiddlewareInterface;
 
 #[\Attribute(\Attribute::TARGET_METHOD | \Attribute::TARGET_CLASS | \Attribute::IS_REPEATABLE)]
 /**
+ * @psalm-import-type MiddlewareConfigurationType from Configuration
  * @psalm-immutable
  */
 final class Middleware
@@ -15,12 +17,12 @@ final class Middleware
     /**
      * @psalm-readonly
      *
-     * @var class-string<MiddlewareInterface>[]|string[]
+     * @var array<class-string<MiddlewareInterface>|string|MiddlewareConfigurationType>
      */
     public array $list;
 
     /**
-     * @param class-string<MiddlewareInterface>[]|string[] $list
+     * @param array<class-string<MiddlewareInterface>|string|MiddlewareConfigurationType> $list
      */
     public function __construct(array $list)
     {

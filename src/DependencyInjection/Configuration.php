@@ -8,7 +8,14 @@ use Psr\Http\Server\MiddlewareInterface;
 use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
+use Symfony\Component\Config\Definition\Exception\InvalidTypeException;
 
+/**
+ * @psalm-type MiddlewareConfigurationType = array{
+ *     id: class-string<MiddlewareInterface>,
+ *     append: boolean,
+ * }
+ */
 final class Configuration implements ConfigurationInterface
 {
     /**
@@ -26,8 +33,15 @@ final class Configuration implements ConfigurationInterface
         $rootNode
             ->children()
                 ->arrayNode('global')
-                    ->scalarPrototype()
-                        ->isRequired()
+                    ->arrayPrototype()
+                        ->children()
+                            ->scalarNode('id')
+                                ->defaultNull()
+                            ->end()
+                            ->booleanNode('append')
+                                ->defaultFalse()
+                            ->end()
+                        ->end()
                         ->beforeNormalization()
                             ->always($this->createMiddlewareNormalizer())
                         ->end()
@@ -38,10 +52,18 @@ final class Configuration implements ConfigurationInterface
                         ->children()
                             ->scalarNode('if')->end()
                             ->arrayNode('middlewares')
-                                ->scalarPrototype()
-                                ->isRequired()
-                                ->beforeNormalization()
-                                    ->always($this->createMiddlewareNormalizer())
+                                ->arrayPrototype()
+                                    ->children()
+                                        ->scalarNode('id')
+                                            ->defaultNull()
+                                        ->end()
+                                        ->booleanNode('append')
+                                            ->defaultFalse()
+                                        ->end()
+                                    ->end()
+                                    ->beforeNormalization()
+                                        ->always($this->createMiddlewareNormalizer())
+                                    ->end()
                                 ->end()
                             ->end()
                         ->end()
@@ -58,17 +80,25 @@ final class Configuration implements ConfigurationInterface
      */
     private function createMiddlewareNormalizer(): callable
     {
-        return function (mixed $middlewareName): string {
-            if (!\is_string($middlewareName) || !\is_a($middlewareName, MiddlewareInterface::class, true)) {
-                throw new \RuntimeException(
-                    vsprintf('Each middleware must implements the "%s" interface, but "%s" doesn\'t.', [
-                        MiddlewareInterface::class,
-                        $middlewareName,
+        return function (mixed $middleware): array {
+            if (!(\is_string($middleware) || \is_array($middleware))) {
+                throw new InvalidTypeException(
+                    \vsprintf('Each middleware configuration must be of type string or array "%s" given.', [
+                        \get_debug_type($middleware),
                     ])
                 );
             }
 
-            return $middlewareName;
+            if (\is_string($middleware)) {
+                $middleware = [ 'id' => $middleware ];
+            }
+
+            $middleware = \array_merge([
+                'id'     => null,
+                'append' => false,
+            ], $middleware);
+
+            return $middleware;
         };
     }
 }

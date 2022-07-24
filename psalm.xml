@@ -12,4 +12,24 @@
             <directory name="vendor" />
         </ignoreFiles>
     </projectFiles>
+
+    <issueHandlers>
+        <UndefinedDocblockClass>
+            <errorLevel type="suppress">
+                <referencedClass name="UnitEnum" />
+            </errorLevel>
+        </UndefinedDocblockClass>
+        <UndefinedFunction>
+            <errorLevel type="suppress">
+                <referencedFunction name="Symfony\Component\DependencyInjection\Loader\Configurator\service" />
+                <referencedFunction name="Symfony\Component\DependencyInjection\Loader\Configurator\service_locator" />
+            </errorLevel>
+        </UndefinedFunction>
+    </issueHandlers>
+
+    <plugins>
+        <pluginClass class="DQ5Studios\PsalmJunit\Plugin">
+            <filepath>./junit.xml</filepath>
+        </pluginClass>
+    </plugins>
 </psalm>

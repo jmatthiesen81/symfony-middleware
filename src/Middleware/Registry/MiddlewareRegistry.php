@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Kafkiansky\SymfonyMiddleware\Middleware\Registry;
 
+use Kafkiansky\SymfonyMiddleware\Middleware\AbstractMiddleware;
 use Psr\Http\Server\MiddlewareInterface;
 use Kafkiansky\SymfonyMiddleware\Middleware\MiddlewareNotConfigured;
 
@@ -19,7 +20,7 @@ interface MiddlewareRegistry
      *
      * @throws MiddlewareNotConfigured
      *
-     * @return MiddlewareInterface[]
+     * @return AbstractMiddleware[]
      */
     public function byName(string $middlewareFqcnOrGroup): array;
 }

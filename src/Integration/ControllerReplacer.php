@@ -4,45 +4,52 @@ declare(strict_types=1);
 
 namespace Kafkiansky\SymfonyMiddleware\Integration;
 
+use Kafkiansky\SymfonyMiddleware\Middleware\AbstractMiddleware;
 use Kafkiansky\SymfonyMiddleware\Middleware\MiddlewareAction;
 use Kafkiansky\SymfonyMiddleware\Middleware\MiddlewareRunner;
 use Kafkiansky\SymfonyMiddleware\Middleware\SymfonyActionRequestHandler;
 use Kafkiansky\SymfonyMiddleware\Psr\PsrRequestCloner;
 use Kafkiansky\SymfonyMiddleware\Psr\PsrRequestTransformer;
 use Kafkiansky\SymfonyMiddleware\Psr\PsrResponseTransformer;
-use Psr\Http\Server\MiddlewareInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 final class ControllerReplacer
 {
-    private PsrRequestTransformer $psrRequestTransformer;
-    private PsrResponseTransformer $psrResponseTransformer;
-    private PsrRequestCloner $psrRequestCloner;
+    private PsrRequestTransformer    $psrRequestTransformer;
+
+    private PsrResponseTransformer   $psrResponseTransformer;
+
+    private PsrRequestCloner         $psrRequestCloner;
+
+    private EventDispatcherInterface $dispatcher;
 
     public function __construct(
-        PsrRequestTransformer $psrRequestTransformer,
-        PsrResponseTransformer $psrResponseTransformer,
-        PsrRequestCloner $psrRequestCloner,
+        PsrRequestTransformer    $psrRequestTransformer,
+        PsrResponseTransformer   $psrResponseTransformer,
+        PsrRequestCloner         $psrRequestCloner,
+        EventDispatcherInterface $dispatcher
     ) {
-        $this->psrRequestTransformer = $psrRequestTransformer;
+        $this->psrRequestTransformer  = $psrRequestTransformer;
         $this->psrResponseTransformer = $psrResponseTransformer;
-        $this->psrRequestCloner = $psrRequestCloner;
+        $this->psrRequestCloner       = $psrRequestCloner;
+        $this->dispatcher             = $dispatcher;
     }
 
     /**
      * @param callable(): Response $originalController
      * @param array $arguments
-     * @param MiddlewareInterface[] $middlewares
+     * @param AbstractMiddleware[] $middlewares
      * @param Request $symfonyRequest
      *
      * @return MiddlewareAction
      */
     public function createController(
         callable $originalController,
-        array $arguments,
-        array $middlewares,
-        Request $symfonyRequest
+        array    $arguments,
+        array    $middlewares,
+        Request  $symfonyRequest
     ): MiddlewareAction {
         return new MiddlewareAction(
             $this->createMiddlewareRunner($middlewares, $originalController, $arguments, $symfonyRequest),
@@ -51,13 +58,13 @@ final class ControllerReplacer
     }
 
     /**
-     * @param MiddlewareInterface[] $middlewares
+     * @param AbstractMiddleware[] $middlewares
      */
     private function createMiddlewareRunner(
-        array $middlewares,
+        array    $middlewares,
         callable $destination,
-        array $arguments,
-        Request $symfonyRequest
+        array    $arguments,
+        Request  $symfonyRequest
     ): MiddlewareRunner {
         return new MiddlewareRunner(
             $middlewares,
@@ -69,8 +76,9 @@ final class ControllerReplacer
                 $symfonyRequest,
                 $this->psrResponseTransformer,
                 $this->psrRequestCloner,
+                $this->dispatcher
             ),
-            $this->psrResponseTransformer,
+            $this->psrResponseTransformer
         );
     }
 

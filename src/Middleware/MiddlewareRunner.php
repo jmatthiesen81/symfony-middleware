@@ -4,49 +4,94 @@ declare(strict_types=1);
 
 namespace Kafkiansky\SymfonyMiddleware\Middleware;
 
+use Closure;
+use Kafkiansky\SymfonyMiddleware\Psr\PsrResponseTransformer;
+use Nyholm\Psr7\Response as PsrResponse;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Kafkiansky\SymfonyMiddleware\Psr\PsrResponseTransformer;
 
 final class MiddlewareRunner
 {
     /**
-     * @var MiddlewareInterface[]
+     * @var AbstractMiddleware[]
      */
-    private array $middlewares;
+    private array                   $middlewares;
+
     private RequestHandlerInterface $requestHandler;
-    private PsrResponseTransformer $psrResponseTransformer;
+
+    private PsrResponseTransformer  $psrResponseTransformer;
 
     /**
-     * @param MiddlewareInterface[] $middlewares
+     * @param AbstractMiddleware[] $middlewares
      */
     public function __construct(
-        array $middlewares,
+        array                   $middlewares,
         RequestHandlerInterface $requestHandler,
-        PsrResponseTransformer $psrResponseTransformer,
+        PsrResponseTransformer  $psrResponseTransformer,
     ) {
-        $this->middlewares = $middlewares;
-        $this->requestHandler = $requestHandler;
+        $this->middlewares            = $middlewares;
+        $this->requestHandler         = $requestHandler;
         $this->psrResponseTransformer = $psrResponseTransformer;
     }
 
     public function run(ServerRequestInterface $serverRequest): Response
     {
-        /** @var \Closure(ServerRequestInterface): ResponseInterface */
+        $middlewares = [
+            ...$this->getPrependingMiddlewares(),
+            new SymfonyBridgeMiddleware($this->requestHandler),
+            ...$this->getAppendingMiddlewares(),
+        ];
+
+        \dump($middlewares);
+
+        /** @var Closure(ServerRequestInterface): ResponseInterface */
         $processor = array_reduce(
-            array_reverse($this->middlewares),
-            /** @param \Closure(ServerRequestInterface): ResponseInterface $stack */
-            function (\Closure $stack, MiddlewareInterface $middleware): \Closure {
-                return function (ServerRequestInterface $request) use ($middleware, $stack): ResponseInterface {
+            \array_reverse($middlewares),
+            /** @param Closure(ServerRequestInterface): ResponseInterface $stack */
+            static function (Closure $stack, MiddlewareInterface $middleware): Closure {
+                return static function (ServerRequestInterface $request) use ($middleware, $stack): ResponseInterface {
                     return $middleware->process($request, new StackMiddleware($stack));
                 };
             },
-            fn (ServerRequestInterface $request): ResponseInterface => $this->requestHandler->handle($request),
+            static fn (ServerRequestInterface $request): ResponseInterface => new PsrResponse(),
         );
 
         return $this->psrResponseTransformer->fromPsrResponse($processor($serverRequest));
+    }
+
+    /**
+     * @return list<MiddlewareInterface>
+     */
+    private function getPrependingMiddlewares(): array
+    {
+        $middlewares = [];
+
+        foreach ($this->middlewares as $middleware) {
+            if ($middleware->prepend()) {
+                $middlewares[] = $middleware->getMiddleware();
+            }
+        }
+
+        return $middlewares;
+    }
+
+    /**
+     * @return list<MiddlewareInterface>
+     */
+    private function getAppendingMiddlewares(): array
+    {
+        $middlewares = [];
+
+        foreach ($this->middlewares as $middleware) {
+            if ($middleware->append()) {
+                $middlewares[] = $middleware->getMiddleware();
+            }
+        }
+
+        return $middlewares;
     }
 }

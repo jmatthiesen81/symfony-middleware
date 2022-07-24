@@ -13,16 +13,18 @@ use Symfony\Component\HttpKernel\Event\ControllerArgumentsEvent;
 final class ControllerListener
 {
     private MiddlewareGatherer $middlewareGatherer;
-    private AttributeReader $reader;
+
+    private AttributeReader    $reader;
+
     private ControllerReplacer $controllerReplacer;
 
     public function __construct(
-        MiddlewareGatherer $middlewareGatherer,
-        AttributeReader $reader,
-        ControllerReplacer $controllerReplacer
+        MiddlewareGatherer        $middlewareGatherer,
+        AttributeReader           $reader,
+        ControllerReplacer        $controllerReplacer
     ) {
         $this->middlewareGatherer = $middlewareGatherer;
-        $this->reader = $reader;
+        $this->reader             = $reader;
         $this->controllerReplacer = $controllerReplacer;
     }
 
@@ -34,26 +36,29 @@ final class ControllerListener
     {
         /** @var object|array{object, string} $controller */
         $controller = $event->getController();
-        $method = null; // null if controller is invokable.
+        $method     = null; // null if controller is invokable.
 
         if (\is_array($controller)) {
-            list($controller, $method) = $controller;
+            [ $controller, $method ] = $controller;
         }
 
-        $attributes = $this->reader->read($controller, $method);
-
+        $attributes  = $this->reader->read($controller, $method);
         $middlewares = $this->middlewareGatherer->gather($attributes);
 
-        if (count($middlewares) > 0) {
-            /** @psalm-var callable(): Response $originalController */
-            $originalController = $event->getController();
+        if ([] === $middlewares) {
+            return;
+        }
 
-            $event->setController($this->controllerReplacer->createController(
+        /** @psalm-var callable(): Response $originalController */
+        $originalController = $event->getController();
+
+        $event->setController(
+            $this->controllerReplacer->createController(
                 $originalController,
                 $event->getArguments(),
                 $middlewares,
                 $event->getRequest()
-            ));
-        }
+            )
+        );
     }
 }
